@@ -8,7 +8,7 @@
 *
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -64,23 +64,21 @@
 /* Debounce delay for the user button. */
 #define DEBOUNCE_DELAY_MS                   (50U)
 
-#if (STORAGE_DEVICE_SD_CARD) && \
-    (defined (TARGET_CY8CKIT_062_BLE) || \
-     defined (TARGET_CY8CKIT_062_WIFI_BT) || \
-     defined (TARGET_CY8CPROTO_062S3_4343W) || \
-     defined (TARGET_CYW9P62S1_43438EVB_01))
-#error The selected target does not support SD card.
-#endif /* #if STORAGE_DEVICE_SD_CARD */
-
 
 /*******************************************************************************
  * Global Variables
  ******************************************************************************/
 static TaskHandle_t littlefs_task_handle;
+static cyhal_gpio_callback_data_t user_btn_callback_data;
 
 /* This enables RTOS aware debugging */
-volatile int uxTopUsedPriority;
+static volatile int uxTopUsedPriority;
 
+
+/*******************************************************************************
+* Function Prototypes
+*******************************************************************************/
+static void user_button_interrupt_handler(void *handler_arg, cyhal_gpio_event_t event);
 
 /*******************************************************************************
 * Function Name: check_status
@@ -133,10 +131,10 @@ static void print_block_device_parameters(struct lfs_config *lfs_cfg)
 *
 * Parameters:
 *  void *handler_arg (unused)
-*  cyhal_gpio_irq_event_t (unused)
+*  cyhal_gpio_event_t (unused)
 *
 *******************************************************************************/
-static void user_button_interrupt_handler(void *handler_arg, cyhal_gpio_irq_event_t event)
+static void user_button_interrupt_handler(void *handler_arg, cyhal_gpio_event_t event)
 {
     (void) handler_arg;
     (void) event;
@@ -328,8 +326,11 @@ int main(void)
     result = cyhal_gpio_init(CYBSP_USER_BTN, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
     CY_ASSERT (result == CY_RSLT_SUCCESS);
 
+    /* Configure GPIO interrupt */
+    user_btn_callback_data.callback = user_button_interrupt_handler;
+
     /* Configure & the user button interrupt */
-    cyhal_gpio_register_callback(CYBSP_USER_BTN, user_button_interrupt_handler, NULL);
+    cyhal_gpio_register_callback(CYBSP_USER_BTN, &user_btn_callback_data);
 
     /* Enable global interrupts */
     __enable_irq();

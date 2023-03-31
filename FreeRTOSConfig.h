@@ -1,7 +1,7 @@
 /*
- * FreeRTOS Kernel V10.3.1
+ * FreeRTOS Kernel V10.4.3 LTS Patch 2
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
- * Copyright (C) 2019-2020 Cypress Semiconductor Corporation, or a subsidiary of
+ * Copyright (C) 2019-2021 Cypress Semiconductor Corporation, or a subsidiary of
  * Cypress Semiconductor Corporation.  All Rights Reserved.
  *
  * Updated configuration to support PSoC 6 MCU.
@@ -23,9 +23,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * http://www.FreeRTOS.org
- * http://aws.amazon.com/freertos
- * http://www.cypress.com
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ * http://www.infineon.com
  *
  */
 
@@ -45,7 +45,6 @@
  *----------------------------------------------------------*/
 
 #include "cy_utils.h"
-#include "cy_syslib.h"
 
 /* Get the low power configuration parameters from
  * the ModusToolbox Device Configurator GeneratedSource:
@@ -54,8 +53,10 @@
  */
 #include "cycfg_system.h"
 
+
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
+extern uint32_t SystemCoreClock;
 #define configCPU_CLOCK_HZ                      SystemCoreClock
 #define configTICK_RATE_HZ                      1000u
 #define configMAX_PRIORITIES                    7
@@ -69,7 +70,7 @@
 #define configUSE_COUNTING_SEMAPHORES           1
 #define configQUEUE_REGISTRY_SIZE               10
 #define configUSE_QUEUE_SETS                    0
-#define configUSE_TIME_SLICING                  0
+#define configUSE_TIME_SLICING                  1
 #define configENABLE_BACKWARD_COMPATIBILITY     0
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
 
@@ -99,7 +100,7 @@
 #define configUSE_TIMERS                        1
 #define configTIMER_TASK_PRIORITY               3
 #define configTIMER_QUEUE_LENGTH                10
-#define configTIMER_TASK_STACK_DEPTH            configMINIMAL_STACK_SIZE
+#define configTIMER_TASK_STACK_DEPTH            ( configMINIMAL_STACK_SIZE * 2 )
 
 /*
 Interrupt nesting behavior configuration.
@@ -199,10 +200,10 @@ standard names - or at least those used in the unmodified vector table. */
 
 /* Enable low power tickless functionality. The RTOS abstraction library
  * provides the compatible implementation of the vApplicationSleep hook:
- * https://github.com/cypresssemiconductorco/abstraction-rtos#freertos
+ * https://github.com/Infineon/abstraction-rtos#freertos
  * The Low Power Assistant library provides additional portable configuration layer
  * for low-power features supported by the PSoC 6 devices:
- * https://github.com/cypresssemiconductorco/lpa
+ * https://github.com/Infineon/lpa
  */
 extern void vApplicationSleep( uint32_t xExpectedIdleTime );
 #define portSUPPRESS_TICKS_AND_SLEEP( xIdleTime ) vApplicationSleep( xIdleTime )
@@ -213,6 +214,11 @@ extern void vApplicationSleep( uint32_t xExpectedIdleTime );
 #endif
 
 /* Deep Sleep Latency Configuration */
+#if defined (CY_DEVICE_SECURE) && defined (DEBUG)
+#undef CY_CFG_PWR_DEEPSLEEP_LATENCY
+#define CY_CFG_PWR_DEEPSLEEP_LATENCY            (100UL)
+#endif
+
 #if( CY_CFG_PWR_DEEPSLEEP_LATENCY > 0 )
 #define configEXPECTED_IDLE_TIME_BEFORE_SLEEP   CY_CFG_PWR_DEEPSLEEP_LATENCY
 #endif
@@ -223,12 +229,22 @@ extern void vApplicationSleep( uint32_t xExpectedIdleTime );
  * GCC toolchain: the application must provide the implementation for the required
  * newlib hook functions: __malloc_lock, __malloc_unlock, __env_lock, __env_unlock.
  * FreeRTOS-compatible implementation is provided by the clib-support library:
- * https://github.com/cypresssemiconductorco/clib-support
+ * https://github.com/Infineon/clib-support
  *
  * ARM/IAR toolchains: the application must provide the reent.h header to adapt
  * FreeRTOS's configUSE_NEWLIB_REENTRANT to work with the toolchain-specific C library.
  * The compatible implementations are also provided by the clib-support library.
  */
 #define configUSE_NEWLIB_REENTRANT              1
+
+/* Deep Sleep Latency Configuration */
+#if defined (TARGET_CY8CKIT_064S0S2_4343W) && defined (DEBUG)
+#undef CY_CFG_PWR_DEEPSLEEP_LATENCY
+#define CY_CFG_PWR_DEEPSLEEP_LATENCY            (100UL)
+#endif
+
+#if( CY_CFG_PWR_DEEPSLEEP_LATENCY > 0 )
+#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP   CY_CFG_PWR_DEEPSLEEP_LATENCY
+#endif
 
 #endif /* FREERTOS_CONFIG_H */
